@@ -59,6 +59,11 @@ static void got_local_sources(GList *sources);
 static OpenWebRTCNativeHandler *staticSelf;
 
 @interface OpenWebRTCNativeHandler ()
+{
+    // TODO: Remove these shorcut accessors
+    OwrPayload *last_video_send_payload;
+    OwrMediaSession *last_video_media_session;
+}
 
 @property (nonatomic, strong) NSMutableArray *helperServers;
 @property (nonatomic, strong) NSMutableArray *remoteCandidatesCache;
@@ -82,6 +87,9 @@ static OpenWebRTCNativeHandler *staticSelf;
         staticSelf = self;
         _delegate = delegate;
         _settings = [[OpenWebRTCSettings alloc] initWithDefaults];
+
+        // Out of the box, OpenWebRTC uses the camera in landscape
+        _videoOrientation = UIDeviceOrientationLandscapeRight;
     }
     return self;
 }
@@ -129,6 +137,40 @@ static OpenWebRTCNativeHandler *staticSelf;
 - (void)terminateCall
 {
     reset();
+}
+
+- (void)setVideoOrientation:(UIDeviceOrientation)videoOrientation
+{
+    _videoOrientation = videoOrientation;
+
+    if (last_video_media_session && last_video_send_payload) {
+
+        // If a session is up, send a new payload with the new device orientation
+        g_object_set(last_video_send_payload, "rotation", self.videoPayloadRotation, NULL);
+        owr_media_session_set_send_payload(last_video_media_session, last_video_send_payload);
+    }
+}
+
+- (NSInteger)videoPayloadRotation
+{
+    // Convert self.videoPayloadRotation into the rotation property value for OwrVideoPayload
+    NSInteger videoPayloadRotation;
+    switch (_videoOrientation) {
+        case UIDeviceOrientationPortrait:
+            videoPayloadRotation = 1;
+            break;
+        case UIDeviceOrientationLandscapeLeft:
+            videoPayloadRotation = 2;
+            break;
+        case UIDeviceOrientationPortraitUpsideDown:
+            videoPayloadRotation = 3;
+            break;
+        case UIDeviceOrientationLandscapeRight:
+        default:
+            videoPayloadRotation = 0;
+            break;
+    };
+    return videoPayloadRotation;
 }
 
 - (void)handleAnswerReceived:(NSString *)answer
@@ -214,6 +256,10 @@ static OpenWebRTCNativeHandler *staticSelf;
                 g_object_set(send_payload, "width", settings.videoWidth, NULL);
                 g_object_set(send_payload, "height", settings.videoHeight, NULL);
                 g_object_set(send_payload, "framerate", settings.videoFramerate, NULL);
+                g_object_set(send_payload, "rotation", self.videoPayloadRotation, NULL);
+
+                last_video_media_session = media_session;
+                last_video_send_payload = send_payload;
             } else
                 g_warn_if_reached();
 
@@ -359,6 +405,10 @@ static OpenWebRTCNativeHandler *staticSelf;
                 g_object_set(send_payload, "width", settings.videoWidth, NULL);
                 g_object_set(send_payload, "height", settings.videoHeight, NULL);
                 g_object_set(send_payload, "framerate", settings.videoFramerate, NULL);
+                g_object_set(send_payload, "rotation", self.videoPayloadRotation, NULL);
+
+                last_video_media_session = media_session;
+                last_video_send_payload = send_payload;
 
                 receive_payload = owr_video_payload_new(codec_type, payload_type, clock_rate, ccm_fir, nack_pli);
             } else

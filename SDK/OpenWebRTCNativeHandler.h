@@ -45,6 +45,7 @@
 
 @property (nonatomic, weak) id <OpenWebRTCNativeHandlerDelegate> delegate;
 @property (nonatomic, strong) OpenWebRTCSettings *settings;
+@property (nonatomic) UIDeviceOrientation videoOrientation;
 
 - (instancetype)initWithDelegate:(id <OpenWebRTCNativeHandlerDelegate>)delegate;
 
