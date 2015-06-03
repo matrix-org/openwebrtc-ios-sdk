@@ -143,8 +143,12 @@ static OpenWebRTCNativeHandler *staticSelf;
 {
     _videoOrientation = videoOrientation;
 
-    if (last_video_media_session && last_video_send_payload) {
+    if (renderer) {
+        // Rotate the selfView accordingly
+        g_object_set(renderer, "rotation", staticSelf.videoPayloadRotation, NULL);
+    }
 
+    if (last_video_media_session && last_video_send_payload) {
         // If a session is up, send a new payload with the new device orientation
         g_object_set(last_video_send_payload, "rotation", self.videoPayloadRotation, NULL);
         owr_media_session_set_send_payload(last_video_media_session, last_video_send_payload);
@@ -1096,6 +1100,7 @@ static void got_local_sources(GList *sources)
 
             OpenWebRTCSettings *settings = staticSelf.settings;
             g_object_set(renderer, "width", settings.videoWidth, "height", settings.videoHeight, "max-framerate", settings.videoFramerate, NULL);
+            g_object_set(renderer, "rotation", staticSelf.videoPayloadRotation, NULL);
 
             owr_media_renderer_set_source(OWR_MEDIA_RENDERER(renderer), source);
             have_video = TRUE;
