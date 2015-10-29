@@ -42,6 +42,8 @@
 #include "owr_window_registry.h"
 #include "owr_types.h"
 
+#import <AVFoundation/AVAudioSession.h>
+
 #define SELF_VIEW_TAG "self-view"
 #define REMOTE_VIEW_TAG "remote-view"
 
@@ -53,6 +55,9 @@ static gchar *candidate_types[] = { "host", "srflx", "prflx", "relay", NULL };
 static gchar *tcp_types[] = { "", "active", "passive", "so", NULL };
 static bool is_answering = NO;
 static bool is_offering = NO;
+
+// audio config backup
+static NSString* audioCategoryBackup = nil;
 
 static void got_local_sources(GList *sources);
 
@@ -86,6 +91,10 @@ static OpenWebRTCNativeHandler *staticSelf;
     if (self = [super init]) {
         staticSelf = self;
         _delegate = delegate;
+        
+        // initialize the audio config
+        [OpenWebRTCNativeHandler initAudioCategory];
+        
         _settings = [[OpenWebRTCSettings alloc] initWithDefaults];
 
         // Out of the box, OpenWebRTC uses the camera in landscape
@@ -137,6 +146,9 @@ static OpenWebRTCNativeHandler *staticSelf;
 - (void)terminateCall
 {
     reset();
+    
+    // restore the audio configuration
+    restoreAudioCategory();
 }
 
 - (void)setVideoOrientation:(UIDeviceOrientation)videoOrientation
@@ -1252,5 +1264,47 @@ static void prepare_media_session_for_source(OwrMediaSource *source, OwrMediaTyp
     owr_transport_agent_add_session(transport_agent, OWR_SESSION(media_session));
 }
 
+#pragma mark - Audio device management
+
++ (void)initAudioCategory
+{
+    NSError* theError = nil;
+    AVAudioSession *myAudioSession = [AVAudioSession sharedInstance];
+    
+    audioCategoryBackup = myAudioSession.category;
+    
+    BOOL result;
+    
+    // update only if it is required
+    if (![AVAudioSessionCategoryPlayAndRecord isEqualToString:audioCategoryBackup]) {
+        result = [myAudioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&theError];
+        
+        if (!result) {
+            NSLog(@"[OpenWebRTC] ERROR! AVAudioSession setCategory failed");
+        }
+    }
+    
+    result = [myAudioSession setActive:YES error:&theError];
+    if (!result) {
+        NSLog(@"[OpenWebRTC] ERROR! AVAudioSession setActive failed");
+    }
+}
+
+static void restoreAudioCategory()
+{
+    NSError* theError = nil;
+    AVAudioSession *myAudioSession = [AVAudioSession sharedInstance];
+    
+    BOOL result;
+    
+    // update only if it is required
+    if (audioCategoryBackup && ![audioCategoryBackup isEqualToString:myAudioSession.category]) {
+        result = [myAudioSession setCategory:audioCategoryBackup error:&theError];
+        
+        if (!result) {
+            NSLog(@"[OpenWebRTC] ERROR! AVAudioSession setCategory failed");
+        }
+    }
+}
 
 @end
