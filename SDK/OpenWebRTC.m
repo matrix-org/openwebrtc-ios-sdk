@@ -46,7 +46,11 @@
             owr_init(NULL);
             owr_run_in_background();
 
-            NSError* theError = nil;
+            // the audio initialization should not be done here
+            // 1- it pauses any third party audio player when the application player
+            // 2- it does not init the audio when a call is managed :
+            //    The audio profile could have been updated while the application was active.
+            /*NSError* theError = nil;
             AVAudioSession *myAudioSession = [AVAudioSession sharedInstance];
             BOOL result = [myAudioSession setCategory:AVAudioSessionCategoryPlayAndRecord error:&theError];
 
@@ -57,7 +61,7 @@
             result = [myAudioSession setActive:YES error:&theError];
             if (!result) {
                 NSLog(@"[OpenWebRTC] ERROR! AVAudioSession setActive failed");
-            }
+            }*/
 
             NSLog(@"[OpenWebRTC] initialized correctly!");
         }
